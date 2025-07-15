@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import model, { createStructuredConversation } from "../lib/llm";
+import model from "../lib/llm";
+import StreamingChat from "../components/StreamingChat";
 
 interface ResponseData {
   content: string;
@@ -57,11 +58,13 @@ export default function Home() {
 
     setTranslationLoading(true);
     try {
-      const result = await createStructuredConversation(
-        "Translate the following from English into Italian",
-        translationInput
-      );
-      console.log(result);
+      const result = await model.invoke([
+        {
+          role: "system",
+          content: "Translate the following from English into Italian",
+        },
+        { role: "user", content: translationInput },
+      ]);
 
       // Extraer información de tokens y metadatos
       const tokenUsage = result.response_metadata?.tokenUsage;
@@ -232,6 +235,14 @@ export default function Home() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* Chat con Streaming */}
+        <div className="w-full mt-8">
+          <h2 className="text-2xl font-bold text-center mb-6 bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
+            Chat con Streaming en Tiempo Real
+          </h2>
+          <StreamingChat systemPrompt="Eres un asistente amigable y útil que responde en español de manera clara y concisa." />
         </div>
       </main>
       <footer className="fixed bottom-0 left-0 right-0 text-center text-sm text-gray-500 w-full py-4 bg-black border-t border-gray-200 z-10">

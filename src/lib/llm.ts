@@ -20,4 +20,50 @@ export const createStructuredConversation = async (
   return await model.invoke(messages);
 };
 
+// Función para streaming de respuestas
+export const streamResponse = async (message: string) => {
+  const stream = await model.stream(message);
+
+  for await (const chunk of stream) {
+    const content =
+      typeof chunk.content === "string"
+        ? chunk.content
+        : Array.isArray(chunk.content)
+        ? chunk.content
+            .map((item) =>
+              typeof item === "string" ? item : JSON.stringify(item)
+            )
+            .join("")
+        : JSON.stringify(chunk.content);
+    process.stdout.write(content);
+  }
+};
+
+// Función para streaming con mensajes estructurados
+export const streamStructuredConversation = async (
+  systemPrompt: string,
+  userMessage: string
+) => {
+  const messages = [
+    new SystemMessage(systemPrompt),
+    new HumanMessage(userMessage),
+  ];
+
+  const stream = await model.stream(messages);
+
+  for await (const chunk of stream) {
+    const content =
+      typeof chunk.content === "string"
+        ? chunk.content
+        : Array.isArray(chunk.content)
+        ? chunk.content
+            .map((item) =>
+              typeof item === "string" ? item : JSON.stringify(item)
+            )
+            .join("")
+        : JSON.stringify(chunk.content);
+    process.stdout.write(content);
+  }
+};
+
 export default model;

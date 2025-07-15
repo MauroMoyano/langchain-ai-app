@@ -1,9 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  env: {
-    GOOGLE_API_KEY: process.env.GOOGLE_API_KEY,
-  },
+  // Removido env para evitar exposición de API key al cliente
+  // La API key solo debe estar disponible en el servidor
 };
 
 export default nextConfig;
