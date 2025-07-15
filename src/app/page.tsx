@@ -1,102 +1,255 @@
-import Image from "next/image";
+"use client";
+
+import { useState } from "react";
+import model, { createStructuredConversation } from "../lib/llm";
+
+interface ResponseData {
+  content: string;
+  tokenUsage?: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
+  finishReason?: string;
+}
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm/6 text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-[family-name:var(--font-geist-mono)] font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [input, setInput] = useState("");
+  const [response, setResponse] = useState<ResponseData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [translationInput, setTranslationInput] = useState("");
+  const [translationResponse, setTranslationResponse] =
+    useState<ResponseData | null>(null);
+  const [translationLoading, setTranslationLoading] = useState(false);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim()) return;
+
+    setLoading(true);
+    try {
+      const result = await model.invoke(input);
+
+      // Extraer información de tokens y metadatos
+      const tokenUsage = result.response_metadata?.tokenUsage;
+      const finishReason = result.response_metadata?.finish_reason;
+
+      setResponse({
+        content: result.content as string,
+        tokenUsage,
+        finishReason,
+      });
+    } catch (error) {
+      console.error("Error:", error);
+      setResponse({
+        content: "Error al procesar la solicitud",
+        tokenUsage: undefined,
+        finishReason: undefined,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTranslation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!translationInput.trim()) return;
+
+    setTranslationLoading(true);
+    try {
+      const result = await createStructuredConversation(
+        "Translate the following from English into Italian",
+        translationInput
+      );
+      console.log(result);
+
+      // Extraer información de tokens y metadatos
+      const tokenUsage = result.response_metadata?.tokenUsage;
+      const finishReason = result.response_metadata?.finish_reason;
+
+      setTranslationResponse({
+        content: result.content as string,
+        tokenUsage,
+        finishReason,
+      });
+    } catch (error) {
+      console.error("Error:", error);
+      setTranslationResponse({
+        content: "Error al procesar la traducción",
+        tokenUsage: undefined,
+        finishReason: undefined,
+      });
+    } finally {
+      setTranslationLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col font-[family-name:var(--font-geist-sans)]">
+      <main className="flex-1 flex flex-col gap-[32px] items-center sm:items-start w-full max-w-4xl mx-auto p-8 sm:p-20 pb-24">
+        <h1 className="text-4xl md:text-6xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent animate-pulse text-center mb-8">
+          Mauro creo este proyecto para aprender a usar LangChain
+        </h1>
+        <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Chat normal */}
+          <div className="space-y-4">
+            <h2 className="text-xl font-bold text-center">
+              Chat con Gemini 2.5 Flash
+            </h2>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    if (!loading && input.trim()) {
+                      handleSubmit(e);
+                    }
+                  }
+                }}
+                placeholder="Escribe tu mensaje aquí... (Presiona Enter para enviar)"
+                className="w-full p-3 border border-gray-300 rounded-lg resize-none h-32"
+                disabled={loading}
+              />
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 disabled:opacity-50"
+              >
+                {loading ? "Procesando..." : "Enviar"}
+              </button>
+            </form>
+
+            {response && (
+              <div className="mt-4 space-y-4">
+                <div className="p-4 bg-black border border-gray-600 rounded-lg">
+                  <h3 className="font-semibold mb-2 text-white">Respuesta:</h3>
+                  <p className="whitespace-pre-wrap text-white">
+                    {response.content}
+                  </p>
+                </div>
+
+                {response.tokenUsage && (
+                  <div className="p-4 bg-black border border-gray-600 rounded-lg text-sm">
+                    <h4 className="font-semibold mb-2 text-white">
+                      Información de Tokens:
+                    </h4>
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <div className="text-white">
+                        <span className="font-medium">Prompt:</span>{" "}
+                        {response.tokenUsage.promptTokens}
+                      </div>
+                      <div className="text-white">
+                        <span className="font-medium">Respuesta:</span>{" "}
+                        {response.tokenUsage.completionTokens}
+                      </div>
+                      <div className="text-white">
+                        <span className="font-medium">Total:</span>{" "}
+                        {response.tokenUsage.totalTokens}
+                      </div>
+                    </div>
+                    {response.finishReason && (
+                      <div className="mt-2 text-white">
+                        <span className="font-medium">Estado:</span>{" "}
+                        {response.finishReason}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Traducción estructurada */}
+          <div className="space-y-4">
+            <h2 className="text-xl font-bold text-center">
+              Traductor Inglés → Italiano
+            </h2>
+
+            <form onSubmit={handleTranslation} className="space-y-4">
+              <textarea
+                value={translationInput}
+                onChange={(e) => setTranslationInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    if (!translationLoading && translationInput.trim()) {
+                      handleTranslation(e);
+                    }
+                  }
+                }}
+                placeholder="Escribe texto en inglés para traducir... (Presiona Enter para traducir)"
+                className="w-full p-3 border border-gray-300 rounded-lg resize-none h-32"
+                disabled={translationLoading}
+              />
+              <button
+                type="submit"
+                disabled={translationLoading}
+                className="w-full bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 text-white py-2 px-4 rounded-lg hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 disabled:opacity-50 transition-all duration-300 font-medium"
+              >
+                {translationLoading ? "Traduciendo..." : "Traducir"}
+              </button>
+            </form>
+
+            {translationResponse && (
+              <div className="mt-4 space-y-4">
+                <div className="p-4 bg-black border border-gray-600 rounded-lg">
+                  <h3 className="font-semibold mb-2 text-white">Traducción:</h3>
+                  <p className="whitespace-pre-wrap text-white">
+                    {translationResponse.content}
+                  </p>
+                </div>
+
+                {translationResponse.tokenUsage && (
+                  <div className="p-4 bg-black border border-gray-600 rounded-lg text-sm">
+                    <h4 className="font-semibold mb-2 text-white">
+                      Información de Tokens:
+                    </h4>
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <div className="text-white">
+                        <span className="font-medium">Prompt:</span>{" "}
+                        {translationResponse.tokenUsage.promptTokens}
+                      </div>
+                      <div className="text-white">
+                        <span className="font-medium">Respuesta:</span>{" "}
+                        {translationResponse.tokenUsage.completionTokens}
+                      </div>
+                      <div className="text-white">
+                        <span className="font-medium">Total:</span>{" "}
+                        {translationResponse.tokenUsage.totalTokens}
+                      </div>
+                    </div>
+                    {translationResponse.finishReason && (
+                      <div className="mt-2 text-white">
+                        <span className="font-medium">Estado:</span>{" "}
+                        {translationResponse.finishReason}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
+      <footer className="fixed bottom-0 left-0 right-0 text-center text-sm text-gray-500 w-full py-4 bg-black border-t border-gray-200 z-10">
+        <p className="mb-2">
+          &copy; {new Date().getFullYear()} Mauro. Todos los derechos
+          reservados.
+        </p>
+        <p className="mb-2">
+          Desarrollado por{" "}
+          <a
+            href="https://www.linkedin.com/in/mauro-moyano-dev/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-500 hover:text-blue-700 underline transition-colors"
+          >
+            Mauro Moyano
+          </a>
+        </p>
       </footer>
     </div>
   );
