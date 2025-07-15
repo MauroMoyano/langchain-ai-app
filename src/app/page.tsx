@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import model from "../lib/llm";
 import StreamingChat from "../components/StreamingChat";
 
 interface ResponseData {
@@ -29,16 +28,24 @@ export default function Home() {
 
     setLoading(true);
     try {
-      const result = await model.invoke(input);
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ message: input.trim() }),
+      });
 
-      // Extraer información de tokens y metadatos
-      const tokenUsage = result.response_metadata?.tokenUsage;
-      const finishReason = result.response_metadata?.finish_reason;
+      if (!response.ok) {
+        throw new Error("Error en la respuesta del servidor");
+      }
+
+      const result = await response.json();
 
       setResponse({
-        content: result.content as string,
-        tokenUsage,
-        finishReason,
+        content: result.content,
+        tokenUsage: result.tokenUsage,
+        finishReason: result.finishReason,
       });
     } catch (error) {
       console.error("Error:", error);
@@ -58,22 +65,24 @@ export default function Home() {
 
     setTranslationLoading(true);
     try {
-      const result = await model.invoke([
-        {
-          role: "system",
-          content: "Translate the following from English into Italian",
+      const response = await fetch("/api/translate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-        { role: "user", content: translationInput },
-      ]);
+        body: JSON.stringify({ text: translationInput.trim() }),
+      });
 
-      // Extraer información de tokens y metadatos
-      const tokenUsage = result.response_metadata?.tokenUsage;
-      const finishReason = result.response_metadata?.finish_reason;
+      if (!response.ok) {
+        throw new Error("Error en la respuesta del servidor");
+      }
+
+      const result = await response.json();
 
       setTranslationResponse({
-        content: result.content as string,
-        tokenUsage,
-        finishReason,
+        content: result.content,
+        tokenUsage: result.tokenUsage,
+        finishReason: result.finishReason,
       });
     } catch (error) {
       console.error("Error:", error);

@@ -115,6 +115,12 @@ export default function StreamingChat({ systemPrompt }: StreamingChatProps) {
             id="message"
             value={message}
             onChange={(e) => setMessage(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                handleSubmit(e);
+              }
+            }}
             placeholder="Escribe tu mensaje aquí..."
             className="w-full p-3 border border-gray-300 rounded-lg resize-none h-32 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             rows={3}
